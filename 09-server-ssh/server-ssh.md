@@ -68,6 +68,22 @@ systemctl status ssh
 
 Om status visar `active (running)` fungerar servern korrekt.
 
+## GitHub SSH authentication
+
+För att kunna pusha till GitHub utan lösenord kopplade vi vår SSH-nyckel till GitHub.
+
+### Visa SSH-nyckeln
+ssh -T git@github.com
+
+Om allt fungerar visas ett meddelande som:
+Hi username! You've successfully authenticated, but GitHub does not provide shell access.
+
+### Push till GitHub med SSH
+
+När SSH är konfigurerat kan vi pusha utan lösenord.
+git push origin 09-server-ssh
+Efter det kan du committa och pusha igen
+
 ## Sammanfattning
 
 I denna lesson har vi:
