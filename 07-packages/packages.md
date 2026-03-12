@@ -128,7 +128,10 @@ neofetch --version
 Detta visar vilken version av programmet som är installerad i systemet.
 
 ---
+<<<<<<< HEAD
 
+=======
+>>>>>>> 07-packages
 ## Sammanfattning
 
 I denna del lärde vi oss hur man installerar program i Linux med apt.
