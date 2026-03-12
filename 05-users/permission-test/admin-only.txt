@@ -1,0 +1,1 @@
+Detta är admin-fil. Bara admin ska kunna läsa och skriva här.

@@ -1,0 +1,3 @@
+Detta är staff-fil. Staff och admin kan skriva. Viewer kan bara läsa.
+Staff har skrivit detta.
+Ny rad från staff.
