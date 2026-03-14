@@ -1,0 +1,6 @@
+@AvvikelseApi_HostAddress = http://localhost:5150
+
+GET {{AvvikelseApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
