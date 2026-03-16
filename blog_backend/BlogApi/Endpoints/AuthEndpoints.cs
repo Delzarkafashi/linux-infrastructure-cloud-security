@@ -31,14 +31,13 @@ public static class AuthEndpoints
                 return Results.Unauthorized();
 
             var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.id.ToString()),
-                new Claim(ClaimTypes.Name, user.username.ToString()),
-                new Claim(ClaimTypes.Role, user.role.ToString())
-                new Claim("nameid", user.id.ToString()),
-                new Claim("role", user.role.ToString())
-            };
-
+{
+    new Claim(ClaimTypes.NameIdentifier, user.id.ToString()),
+    new Claim(ClaimTypes.Name, user.username.ToString()),
+    new Claim(ClaimTypes.Role, user.role.ToString()),
+    new Claim("nameid", user.id.ToString()),
+    new Claim("role", user.role.ToString())
+};
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
