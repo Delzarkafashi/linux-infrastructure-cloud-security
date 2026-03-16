@@ -43,3 +43,4 @@ jobs:
 
       - name: Run tests
         run: dotnet test blog_backend/BlogApi.Tests/BlogApi.Tests.csproj --no-build --verbosity normal
+# trigger workflow
