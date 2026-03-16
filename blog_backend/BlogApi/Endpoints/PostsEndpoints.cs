@@ -1,5 +1,6 @@
 using Dapper;
 using Npgsql;
+using System.Security.Claims;
 
 namespace BlogApi.Endpoints;
 
@@ -11,11 +12,11 @@ public static class PostsEndpoints
         {
             await using var connection = new NpgsqlConnection(connectionString);
 
-            var sql = """
-                SELECT id, title, content, user_id, created_at, updated_at
-                FROM posts
-                ORDER BY id;
-                """;
+            var sql = @"
+SELECT id, title, content, user_id, created_at, updated_at
+FROM posts
+ORDER BY id;
+";
 
             var posts = await connection.QueryAsync(sql);
 
@@ -26,11 +27,11 @@ public static class PostsEndpoints
         {
             await using var connection = new NpgsqlConnection(connectionString);
 
-            var sql = """
-                SELECT id, title, content, user_id, created_at, updated_at
-                FROM posts
-                WHERE id = @id;
-                """;
+            var sql = @"
+SELECT id, title, content, user_id, created_at, updated_at
+FROM posts
+WHERE id = @id;
+";
 
             var post = await connection.QueryFirstOrDefaultAsync(sql, new { id });
 
@@ -40,20 +41,33 @@ public static class PostsEndpoints
             return Results.Ok(post);
         });
 
-        app.MapPost("/posts", async (HttpContext httpContext, string title, string content, int user_id) =>
+        app.MapPost("/posts", async (HttpContext httpContext, string title, string content) =>
         {
             if (!httpContext.User.IsInRole("admin"))
                 return Results.Unauthorized();
 
+            var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrWhiteSpace(userIdClaim))
+                return Results.Unauthorized();
+
+            if (!int.TryParse(userIdClaim, out var userId))
+                return Results.BadRequest("Ogiltigt user id i token.");
+
             await using var connection = new NpgsqlConnection(connectionString);
 
-            var sql = """
-                INSERT INTO posts (title, content, user_id)
-                VALUES (@title, @content, @user_id)
-                RETURNING id;
-                """;
+            var sql = @"
+INSERT INTO posts (title, content, user_id)
+VALUES (@title, @content, @user_id)
+RETURNING id;
+";
 
-            var id = await connection.ExecuteScalarAsync<int>(sql, new { title, content, user_id });
+            var id = await connection.ExecuteScalarAsync<int>(sql, new
+            {
+                title,
+                content,
+                user_id = userId
+            });
 
             return Results.Ok(new { id });
         });
@@ -65,13 +79,13 @@ public static class PostsEndpoints
 
             await using var connection = new NpgsqlConnection(connectionString);
 
-            var sql = """
-                UPDATE posts
-                SET title = @title,
-                    content = @content,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = @id;
-                """;
+            var sql = @"
+UPDATE posts
+SET title = @title,
+    content = @content,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = @id;
+";
 
             var rowsAffected = await connection.ExecuteAsync(sql, new { id, title, content });
 
@@ -88,10 +102,10 @@ public static class PostsEndpoints
 
             await using var connection = new NpgsqlConnection(connectionString);
 
-            var sql = """
-                DELETE FROM posts
-                WHERE id = @id;
-                """;
+            var sql = @"
+DELETE FROM posts
+WHERE id = @id;
+";
 
             var rowsAffected = await connection.ExecuteAsync(sql, new { id });
 
