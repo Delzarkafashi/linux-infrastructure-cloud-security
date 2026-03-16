@@ -6,6 +6,29 @@ namespace BlogApi.Endpoints;
 
 public static class PostsEndpoints
 {
+    private static bool IsAdminUser(ClaimsPrincipal user)
+    {
+        var role =
+            user.FindFirst(ClaimTypes.Role)?.Value ??
+            user.FindFirst("role")?.Value ??
+            user.FindFirst("http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value;
+
+        return role == "admin";
+    }
+
+    private static int? GetUserId(ClaimsPrincipal user)
+    {
+        var userIdValue =
+            user.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
+            user.FindFirst("nameid")?.Value ??
+            user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+
+        if (int.TryParse(userIdValue, out var userId))
+            return userId;
+
+        return null;
+    }
+
     public static void MapPostsEndpoints(this WebApplication app, string connectionString)
     {
         app.MapGet("/posts", async () =>
@@ -43,16 +66,13 @@ WHERE id = @id;
 
         app.MapPost("/posts", async (HttpContext httpContext, string title, string content) =>
         {
-            if (!httpContext.User.IsInRole("admin"))
+            if (!IsAdminUser(httpContext.User))
                 return Results.Unauthorized();
 
-            var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userId = GetUserId(httpContext.User);
 
-            if (string.IsNullOrWhiteSpace(userIdClaim))
+            if (userId is null)
                 return Results.Unauthorized();
-
-            if (!int.TryParse(userIdClaim, out var userId))
-                return Results.BadRequest("Ogiltigt user id i token.");
 
             await using var connection = new NpgsqlConnection(connectionString);
 
@@ -66,7 +86,7 @@ RETURNING id;
             {
                 title,
                 content,
-                user_id = userId
+                user_id = userId.Value
             });
 
             return Results.Ok(new { id });
@@ -74,7 +94,7 @@ RETURNING id;
 
         app.MapPut("/posts/{id}", async (HttpContext httpContext, int id, string title, string content) =>
         {
-            if (!httpContext.User.IsInRole("admin"))
+            if (!IsAdminUser(httpContext.User))
                 return Results.Unauthorized();
 
             await using var connection = new NpgsqlConnection(connectionString);
@@ -97,7 +117,7 @@ WHERE id = @id;
 
         app.MapDelete("/posts/{id}", async (HttpContext httpContext, int id) =>
         {
-            if (!httpContext.User.IsInRole("admin"))
+            if (!IsAdminUser(httpContext.User))
                 return Results.Unauthorized();
 
             await using var connection = new NpgsqlConnection(connectionString);
