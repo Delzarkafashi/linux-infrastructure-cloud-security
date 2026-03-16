@@ -1,4 +1,4 @@
-name: .NET Backend CI
+name: .NET Backend Tests
 
 on:
   push:
@@ -9,6 +9,7 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+
     services:
       postgres:
         image: postgres:16
@@ -25,58 +26,63 @@ jobs:
           --health-retries 10
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup .NET 8 SDK
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
-    - name: Restore backend
-      run: dotnet restore blog_backend/BlogApi/BlogApi.csproj
+      - name: Wait for Postgres
+        run: |
+          echo "Waiting for Postgres to be ready..."
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            sleep 2
+          done
 
-    - name: Restore tests
-      run: dotnet restore blog_backend/BlogApi.Tests/BlogApi.Tests.csproj
-
-    - name: Build backend
-      run: dotnet build blog_backend/BlogApi/BlogApi.csproj --no-restore
-
-    - name: Build tests
-      run: dotnet build blog_backend/BlogApi.Tests/BlogApi.Tests.csproj --no-restore
-
-    - name: Install psql client
-      run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
-    - name: Setup test database
-      env:
-        PGPASSWORD: postgres
-      run: |
-        psql -h localhost -U postgres -d blogdb_test <<'SQL'
+      - name: Seed Database
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d blogdb_test <<SQL
           CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username TEXT NOT NULL,
-            password_hash TEXT NOT NULL,
-            role TEXT NOT NULL
+              id SERIAL PRIMARY KEY,
+              username TEXT UNIQUE NOT NULL,
+              password_hash TEXT NOT NULL,
+              role TEXT NOT NULL
           );
-        SQL
-        psql -h localhost -U postgres -d blogdb_test <<'SQL'
-          CREATE TABLE IF NOT EXISTS posts (
-            id SERIAL PRIMARY KEY,
-            title TEXT NOT NULL,
-            content TEXT NOT NULL,
-            user_id INT REFERENCES users(id),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP
-          );
-        SQL
-        psql -h localhost -U postgres -d blogdb_test <<'SQL'
           INSERT INTO users (username, password_hash, role)
-          VALUES 
-            ('admin', 'admin123', 'admin'),
-            ('staff', 'staff123', 'staff'),
-            ('viewer', 'viewer123', 'viewer');
-        SQL
+          VALUES
+              ('admin', 'admin123', 'admin'),
+              ('viewer', 'viewer123', 'viewer')
+          ON CONFLICT (username) DO NOTHING;
 
-    - name: Run tests
-      run: dotnet test blog_backend/BlogApi.Tests/BlogApi.Tests.csproj --no-build
+          CREATE TABLE IF NOT EXISTS posts (
+              id SERIAL PRIMARY KEY,
+              title TEXT NOT NULL,
+              content TEXT NOT NULL,
+              user_id INTEGER REFERENCES users(id),
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          INSERT INTO posts (title, content, user_id)
+          VALUES
+              ('Initial Post', 'Detta är ett testinlägg', 1)
+          ON CONFLICT DO NOTHING;
+          SQL
+
+      - name: Restore backend
+        run: dotnet restore blog_backend/BlogApi/BlogApi.csproj
+
+      - name: Restore test project
+        run: dotnet restore blog_backend/BlogApi.Tests/BlogApi.Tests.csproj
+
+      - name: Build backend
+        run: dotnet build blog_backend/BlogApi/BlogApi.csproj --no-restore
+
+      - name: Build test project
+        run: dotnet build blog_backend/BlogApi.Tests/BlogApi.Tests.csproj --no-restore
+
+      - name: Run tests
+        env:
+          DOTNET_ConnectionStrings__DefaultConnection: "Host=localhost;Database=blogdb_test;Username=postgres;Password=postgres"
+        run: dotnet test blog_backend/BlogApi.Tests/BlogApi.Tests.csproj --no-build
