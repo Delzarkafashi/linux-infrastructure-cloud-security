@@ -54,7 +54,6 @@ jobs:
           INSERT INTO users (username, role) VALUES
               ('viewer', 'viewer')
           ON CONFLICT (username) DO NOTHING;
-
           CREATE TABLE IF NOT EXISTS posts (
               id SERIAL PRIMARY KEY,
               title TEXT NOT NULL,
