@@ -35,6 +35,8 @@ public static class AuthEndpoints
                 new Claim(ClaimTypes.NameIdentifier, user.id.ToString()),
                 new Claim(ClaimTypes.Name, user.username.ToString()),
                 new Claim(ClaimTypes.Role, user.role.ToString())
+                new Claim("nameid", user.id.ToString()),
+                new Claim("role", user.role.ToString())
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
