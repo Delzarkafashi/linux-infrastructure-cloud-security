@@ -10,6 +10,27 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: blogdb_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d blogdb_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=blogdb_test;Username=postgres;Password=postgres
+      Jwt__Key: super_secret_test_key_12345
+      Jwt__Issuer: BlogApi
+      Jwt__Audience: BlogApiUsers
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -30,6 +51,49 @@ jobs:
 
       - name: Build Tests
         run: dotnet build blog_backend/BlogApi.Tests/BlogApi.Tests.csproj --no-restore
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Create users table
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d blogdb_test <<'SQL'
+          CREATE TABLE IF NOT EXISTS users (
+              id SERIAL PRIMARY KEY,
+              username TEXT NOT NULL UNIQUE,
+              password TEXT NOT NULL,
+              role TEXT NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          SQL
+
+      - name: Create posts table
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d blogdb_test <<'SQL'
+          CREATE TABLE IF NOT EXISTS posts (
+              id SERIAL PRIMARY KEY,
+              title TEXT NOT NULL,
+              content TEXT NOT NULL,
+              user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          SQL
+
+      - name: Seed test data
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d blogdb_test <<'SQL'
+          INSERT INTO users (id, username, password, role)
+          VALUES
+              (1, 'admin', 'admin123', 'admin'),
+              (2, 'viewer', 'viewer123', 'viewer')
+          ON CONFLICT (username) DO NOTHING;
+
+          INSERT INTO posts (id, title, content, user_id)
+          VALUES
+              (1, 'Första inlägget', 'Testinnehåll', 1)
+          ON CONFLICT (id) DO NOTHING;
+          SQL
 
       - name: Run tests
         run: dotnet test blog_backend/BlogApi.Tests/BlogApi.Tests.csproj --no-build
