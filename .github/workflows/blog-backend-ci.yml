@@ -41,6 +41,7 @@ jobs:
       Jwt__Issuer: ${{ secrets.JWT_ISSUER }}
       Jwt__Audience: ${{ secrets.JWT_AUDIENCE }}
       ConnectionStrings__DefaultConnection: ${{ secrets.CONNECTION_STRING }}
+      PGPASSWORD: Kevin2004
 
     steps:
       - name: Checkout repository
@@ -50,6 +51,42 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Create tables and seed test data
+        run: |
+          psql -h localhost -U postgres -d blogdb <<'SQL'
+          CREATE TABLE IF NOT EXISTS users (
+              id SERIAL PRIMARY KEY,
+              username VARCHAR(50) NOT NULL UNIQUE,
+              password_hash TEXT NOT NULL,
+              role VARCHAR(20) NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+
+          CREATE TABLE IF NOT EXISTS posts (
+              id SERIAL PRIMARY KEY,
+              title TEXT NOT NULL,
+              content TEXT NOT NULL,
+              user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP
+          );
+
+          TRUNCATE TABLE posts, users RESTART IDENTITY CASCADE;
+
+          INSERT INTO users (username, password_hash, role)
+          VALUES
+            ('admin', 'admin123', 'admin'),
+            ('viewer', 'viewer123', 'viewer');
+
+          INSERT INTO posts (title, content, user_id)
+          VALUES
+            ('Post 1', 'Detta är första posten', 1),
+            ('Post 2', 'Detta är andra posten', 1);
+          SQL
 
       - name: Restore test project
         run: dotnet restore blog_backend/BlogApi.Tests/BlogApi.Tests.csproj
