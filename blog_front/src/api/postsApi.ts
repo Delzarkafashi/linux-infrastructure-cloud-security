@@ -13,13 +13,12 @@ export async function getPosts(): Promise<Post[]> {
   return data;
 }
 
-export async function createPost(title: string, content: string, userId: number) {
+export async function createPost(title: string, content: string) {
   const token = localStorage.getItem("token");
 
   const query = new URLSearchParams({
     title: title,
-    content: content,
-    user_id: userId.toString()
+    content: content
   });
 
   const response = await fetch(`${API_URL}/posts?${query.toString()}`, {

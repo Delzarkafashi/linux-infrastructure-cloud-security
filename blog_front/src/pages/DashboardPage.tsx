@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getPosts, createPost, updatePost, deletePost } from "../api/postsApi";
+import { getUserRole } from "../utils/auth";
 import type { Post } from "../types/post";
 
 type DashboardPageProps = {
@@ -14,6 +15,8 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
   const [editingPostId, setEditingPostId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
+  const role = getUserRole();
+  const isAdmin = role === "admin";
 
   async function loadPosts() {
     const data = await getPosts();
@@ -29,7 +32,7 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
     setMessage("");
 
     try {
-      await createPost(title, content, 1);
+      await createPost(title, content);
       setTitle("");
       setContent("");
       setMessage("Post skapades.");
@@ -85,27 +88,37 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
 
       <button onClick={onLogout}>Logga ut</button>
 
-      <h2>Skapa blogginlägg</h2>
+      <p>Roll: {role ?? "okänd"}</p>
 
-      <form onSubmit={handleCreatePost}>
-        <div>
-          <input
-            placeholder="Titel"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-          />
-        </div>
+      {isAdmin && (
+        <>
+          <h2>Skapa blogginlägg</h2>
 
-        <div>
-          <textarea
-            placeholder="Innehåll"
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-          />
-        </div>
+          <form onSubmit={handleCreatePost}>
+            <div>
+              <input
+                placeholder="Titel"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+              />
+            </div>
 
-        <button type="submit">Skapa post</button>
-      </form>
+            <div>
+              <textarea
+                placeholder="Innehåll"
+                value={content}
+                onChange={(event) => setContent(event.target.value)}
+              />
+            </div>
+
+            <button type="submit">Skapa post</button>
+          </form>
+        </>
+      )}
+
+      {!isAdmin && (
+        <p>Du kan bara läsa blogginlägg.</p>
+      )}
 
       {message && <p>{message}</p>}
 
@@ -113,7 +126,7 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
 
       {posts.map((post) => (
         <article key={post.id}>
-          {editingPostId === post.id ? (
+          {editingPostId === post.id && isAdmin ? (
             <>
               <div>
                 <input
@@ -137,8 +150,12 @@ function DashboardPage({ onLogout }: DashboardPageProps) {
               <h3>{post.title}</h3>
               <p>{post.content}</p>
 
-              <button onClick={() => handleStartEdit(post)}>Uppdatera</button>
-              <button onClick={() => handleDeletePost(post.id)}>Delete</button>
+              {isAdmin && (
+                <>
+                  <button onClick={() => handleStartEdit(post)}>Uppdatera</button>
+                  <button onClick={() => handleDeletePost(post.id)}>Delete</button>
+                </>
+              )}
             </>
           )}
         </article>
