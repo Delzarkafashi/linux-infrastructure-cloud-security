@@ -8,7 +8,6 @@ on:
 
 jobs:
   build-and-test:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -20,11 +19,17 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Restore
-        run: dotnet restore blog_backend/BlogApi.sln
+      - name: Restore API
+        run: dotnet restore blog_backend/BlogApi/BlogApi.csproj
 
-      - name: Build
-        run: dotnet build blog_backend/BlogApi.sln --no-restore
+      - name: Restore Tests
+        run: dotnet restore blog_backend/BlogApi.Tests/BlogApi.Tests.csproj
+
+      - name: Build API
+        run: dotnet build blog_backend/BlogApi/BlogApi.csproj --no-restore
+
+      - name: Build Tests
+        run: dotnet build blog_backend/BlogApi.Tests/BlogApi.Tests.csproj --no-restore
 
       - name: Run tests
-        run: dotnet test blog_backend/BlogApi.sln --no-build
+        run: dotnet test blog_backend/BlogApi.Tests/BlogApi.Tests.csproj --no-build
