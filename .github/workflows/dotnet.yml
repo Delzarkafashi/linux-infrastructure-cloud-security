@@ -9,6 +9,7 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+
     services:
       postgres:
         image: postgres:16
@@ -25,45 +26,49 @@ jobs:
           --health-retries 10
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
 
-    - name: Wait for Postgres
-      run: |
-        echo "Waiting for Postgres..."
-        until pg_isready -h localhost -p 5432 -U postgres; do sleep 2; done
+      - name: Wait for Postgres
+        run: |
+          echo "Waiting for Postgres to be ready..."
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            sleep 2
+          done
 
-    - name: Initialize database
-      run: |
-        PGPASSWORD=postgres psql -h localhost -U postgres -d blogdb_test <<SQL
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username TEXT NOT NULL,
-            password_hash TEXT,
-            role TEXT NOT NULL
-        );
-        INSERT INTO users (username, password_hash, role) VALUES
-            ('admin', 'admin123', 'admin')
-        ON CONFLICT (username) DO NOTHING;
-        INSERT INTO users (username, role) VALUES
-            ('viewer', 'viewer')
-        ON CONFLICT (username) DO NOTHING;
-        CREATE TABLE IF NOT EXISTS posts (
-            id SERIAL PRIMARY KEY,
-            title TEXT NOT NULL,
-            content TEXT NOT NULL
-        );
+      - name: Initialize database
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d blogdb_test <<SQL
+          CREATE TABLE IF NOT EXISTS users (
+              id SERIAL PRIMARY KEY,
+              username TEXT NOT NULL,
+              password_hash TEXT,
+              role TEXT NOT NULL
+          );
+          INSERT INTO users (username, password_hash, role) VALUES
+              ('admin', 'admin123', 'admin')
+          ON CONFLICT (username) DO NOTHING;
+          INSERT INTO users (username, role) VALUES
+              ('viewer', 'viewer')
+          ON CONFLICT (username) DO NOTHING;
+
+          CREATE TABLE IF NOT EXISTS posts (
+              id SERIAL PRIMARY KEY,
+              title TEXT NOT NULL,
+              content TEXT NOT NULL
+          );
 SQL
 
-    - name: Restore solution
-      run: dotnet restore blog_backend/BlogApi.sln
+      - name: Restore
+        run: dotnet restore blog_backend/BlogApi.sln
 
-    - name: Build solution
-      run: dotnet build blog_backend/BlogApi.sln --no-restore
+      - name: Build
+        run: dotnet build blog_backend/BlogApi.sln --no-restore
 
-    - name: Run tests
-      run: dotnet test blog_backend/BlogApi.sln --no-build
+      - name: Run Tests
+        run: dotnet test blog_backend/BlogApi.sln --no-build
