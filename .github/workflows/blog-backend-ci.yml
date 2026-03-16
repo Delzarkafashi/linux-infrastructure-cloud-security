@@ -21,6 +21,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: Kevin2004
+          POSTGRES_DB: blogdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d blogdb"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     env:
       Jwt__Key: ${{ secrets.JWT_KEY }}
       Jwt__Issuer: ${{ secrets.JWT_ISSUER }}
@@ -44,4 +59,3 @@ jobs:
 
       - name: Run tests
         run: dotnet test blog_backend/BlogApi.Tests/BlogApi.Tests.csproj --no-build --verbosity normal
-# trigger workflow
