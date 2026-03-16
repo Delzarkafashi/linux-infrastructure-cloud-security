@@ -93,3 +93,7 @@ app.MapPostsEndpoints(connectionString!);
 app.MapAuthEndpoints(connectionString!, jwtKey!, jwtIssuer!, jwtAudience!);
 
 app.Run();
+
+public partial class Program
+{
+}
